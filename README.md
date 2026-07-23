@@ -7,7 +7,7 @@ Este proyecto fue desarrollado para el **Challenge Alura – Agentes con IA**.
 El sistema implementa un agente conversacional que responde preguntas en lenguaje natural utilizando exclusivamente la información contenida en el **Manual Operativo y de Políticas de BimBam Buy**.
 
 La aplicación extrae automáticamente el texto del documento PDF y utiliza el modelo **Gemini 2.5 Flash** para generar respuestas fundamentadas.
-
+**Aplicación desplegada:** https://alura-agent-237472055075.us-central1.run.app
 ---
 
 ## Tecnologías utilizadas
