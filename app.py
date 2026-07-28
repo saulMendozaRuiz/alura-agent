@@ -366,38 +366,35 @@ pregunta_seleccionada = st.selectbox(
     ["Escribir mi propia pregunta"] + preguntas_ejemplo,
 )
 
-with st.form("formulario_consulta", clear_on_submit=False):
-    if pregunta_seleccionada == "Escribir mi propia pregunta":
-        pregunta = st.text_area(
-            "Escribe tu pregunta",
-            placeholder="Ejemplo: ¿Cómo solicito una devolución?",
-            height=100,
-        )
-    else:
-        pregunta = pregunta_seleccionada
-        st.info(f"Pregunta seleccionada: {pregunta}")
-
-    consultar = st.form_submit_button(
-        "Consultar manual",
-        type="primary",
-        use_container_width=True,
+if pregunta_seleccionada == "Escribir mi propia pregunta":
+    pregunta = st.text_area(
+        "Escribe tu pregunta",
+        placeholder="Ejemplo: ¿Cómo solicito una devolución?",
+        height=100,
+        key="pregunta_manual",
     )
+else:
+    pregunta = pregunta_seleccionada
+    st.info(f"Pregunta seleccionada: {pregunta}")
 
-if "resultado_consulta" not in st.session_state:
-    st.session_state.resultado_consulta = None
+consultar = st.button(
+    "Consultar manual",
+    type="primary",
+    use_container_width=True,
+)
 
 if consultar:
     pregunta_limpia = pregunta.strip()
 
     if not pregunta_limpia:
         st.warning("Escribe o selecciona una pregunta.")
-        st.session_state.resultado_consulta = None
 
     else:
-        with st.spinner(
-            "Recuperando páginas relevantes y generando respuesta..."
-        ):
-            try:
+        try:
+            with st.spinner(
+                "Recuperando páginas relevantes y "
+                "generando respuesta..."
+            ):
                 paginas_relevantes = recuperar_paginas(
                     paginas=paginas_pdf,
                     pregunta=pregunta_limpia,
@@ -410,115 +407,93 @@ if consultar:
                     api_key=api_key,
                 )
 
-                ranking = []
+            st.subheader("Respuesta")
+            st.write(respuesta)
 
-                if paginas_relevantes:
-                    terminos_consulta = set(
-                        extraer_terminos(pregunta_limpia)
-                    )
-
-                    for posicion, resultado in enumerate(
-                        paginas_relevantes,
-                        start=1,
-                    ):
-                        terminos_pagina = set(
-                            extraer_terminos(resultado["texto"])
-                        )
-
-                        coincidencias = sorted(
-                            terminos_consulta & terminos_pagina
-                        )
-
-                        motivo = (
-                            ", ".join(coincidencias[:6])
-                            if coincidencias
-                            else "Coincidencia parcial entre términos"
-                        )
-
-                        ranking.append(
-                            {
-                                "Posición": posicion,
-                                "Página": resultado["pagina"],
-                                "Score": round(resultado["score"], 2),
-                                "Motivo": motivo,
-                            }
-                        )
-
-                st.session_state.resultado_consulta = {
-                    "pregunta": pregunta_limpia,
-                    "respuesta": respuesta,
-                    "ranking": ranking,
-                    "paginas": paginas_relevantes,
-                    "error": None,
-                }
-
-            except Exception as error:
-                st.session_state.resultado_consulta = {
-                    "pregunta": pregunta_limpia,
-                    "respuesta": None,
-                    "ranking": [],
-                    "paginas": [],
-                    "error": str(error),
-                }
-
-
-resultado_guardado = st.session_state.resultado_consulta
-
-if resultado_guardado is not None:
-    if resultado_guardado["error"]:
-        st.error("No fue posible consultar Gemini.")
-        st.code(resultado_guardado["error"])
-
-    else:
-        st.subheader("Respuesta")
-        st.write(resultado_guardado["respuesta"])
-
-        paginas_relevantes = resultado_guardado["paginas"]
-        ranking = resultado_guardado["ranking"]
-
-        if paginas_relevantes:
-            st.caption("Ranking y motivo de recuperación")
-
-            st.dataframe(
-                ranking,
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            with st.expander(
-                "Ver evidencia documental recuperada"
-            ):
-                st.caption(
-                    "Estos fragmentos fueron seleccionados antes "
-                    "de consultar el modelo."
+            if paginas_relevantes:
+                terminos_consulta = set(
+                    extraer_terminos(pregunta_limpia)
                 )
 
-                for resultado in paginas_relevantes:
-                    st.markdown(
-                        f"### Página {resultado['pagina']}"
+                ranking = []
+
+                for posicion, resultado in enumerate(
+                    paginas_relevantes,
+                    start=1,
+                ):
+                    terminos_pagina = set(
+                        extraer_terminos(resultado["texto"])
                     )
 
+                    coincidencias = sorted(
+                        terminos_consulta & terminos_pagina
+                    )
+
+                    motivo = (
+                        ", ".join(coincidencias[:6])
+                        if coincidencias
+                        else "Coincidencia parcial entre términos"
+                    )
+
+                    ranking.append(
+                        {
+                            "Posición": posicion,
+                            "Página": resultado["pagina"],
+                            "Score": round(
+                                resultado["score"],
+                                2,
+                            ),
+                            "Motivo": motivo,
+                        }
+                    )
+
+                st.caption("Ranking y motivo de recuperación")
+
+                st.dataframe(
+                    ranking,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                with st.expander(
+                    "Ver evidencia documental recuperada"
+                ):
                     st.caption(
-                        f"Puntuación de relevancia: "
-                        f"{resultado['score']:.2f}"
+                        "Estos fragmentos fueron seleccionados "
+                        "antes de consultar el modelo."
                     )
 
-                    fragmento = resultado["texto"]
-
-                    if len(fragmento) > 1800:
-                        fragmento = (
-                            fragmento[:1800]
-                            + "\n\n[… fragmento recortado …]"
+                    for resultado in paginas_relevantes:
+                        st.markdown(
+                            f"### Página {resultado['pagina']}"
                         )
 
-                    st.text(fragmento)
-                    st.divider()
+                        st.caption(
+                            "Puntuación de relevancia: "
+                            f"{resultado['score']:.2f}"
+                        )
 
-        else:
-            st.info(
-                "La búsqueda no encontró páginas con "
-                "coincidencias suficientes."
-            )
+                        fragmento = resultado["texto"]
+
+                        if len(fragmento) > 1800:
+                            fragmento = (
+                                fragmento[:1800]
+                                + "\n\n[… fragmento recortado …]"
+                            )
+
+                        st.text(fragmento)
+                        st.divider()
+
+            else:
+                st.info(
+                    "La búsqueda no encontró páginas con "
+                    "coincidencias suficientes."
+                )
+
+        except Exception as error:
+            st.error("No fue posible consultar Gemini.")
+            st.code(str(error))
+
 
 st.divider()
 
