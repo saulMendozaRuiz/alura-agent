@@ -366,21 +366,24 @@ pregunta_seleccionada = st.selectbox(
     ["Escribir mi propia pregunta"] + preguntas_ejemplo,
 )
 
-if pregunta_seleccionada == "Escribir mi propia pregunta":
-    pregunta = st.text_area(
-        "Escribe tu pregunta",
-        placeholder="Ejemplo: ¿Cómo solicito una devolución?",
-        height=100,
-    )
-else:
-    pregunta = pregunta_seleccionada
-    st.info(f"Pregunta seleccionada: {pregunta}")
+with st.form("formulario_consulta", clear_on_submit=False):
+    if pregunta_seleccionada == "Escribir mi propia pregunta":
+        pregunta = st.text_area(
+            "Escribe tu pregunta",
+            placeholder="Ejemplo: ¿Cómo solicito una devolución?",
+            height=100,
+        )
+    else:
+        pregunta = pregunta_seleccionada
+        st.info(f"Pregunta seleccionada: {pregunta}")
 
-if st.button(
-    "Consultar manual",
-    type="primary",
-    use_container_width=True,
-):
+    consultar = st.form_submit_button(
+        "Consultar manual",
+        type="primary",
+        use_container_width=True,
+    )
+
+if consultar:
     pregunta_limpia = pregunta.strip()
 
     if not pregunta_limpia:
