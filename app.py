@@ -461,7 +461,6 @@ if consultar:
                     "error": str(error),
                 }
 
-        st.rerun()
 
 resultado_guardado = st.session_state.resultado_consulta
 
