@@ -383,11 +383,15 @@ with st.form("formulario_consulta", clear_on_submit=False):
         use_container_width=True,
     )
 
+if "resultado_consulta" not in st.session_state:
+    st.session_state.resultado_consulta = None
+
 if consultar:
     pregunta_limpia = pregunta.strip()
 
     if not pregunta_limpia:
         st.warning("Escribe o selecciona una pregunta.")
+        st.session_state.resultado_consulta = None
 
     else:
         with st.spinner(
@@ -406,15 +410,12 @@ if consultar:
                     api_key=api_key,
                 )
 
-                st.subheader("Respuesta")
-                st.write(respuesta)
+                ranking = []
 
                 if paginas_relevantes:
                     terminos_consulta = set(
                         extraer_terminos(pregunta_limpia)
                     )
-
-                    ranking = []
 
                     for posicion, resultado in enumerate(
                         paginas_relevantes,
@@ -443,54 +444,80 @@ if consultar:
                             }
                         )
 
-                    st.caption(
-                        "Ranking y motivo de recuperación"
-                    )
-
-                    st.dataframe(
-                        ranking,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    with st.expander(
-                        "Ver evidencia documental recuperada"
-                    ):
-                        st.caption(
-                            "Estos fragmentos fueron seleccionados antes "
-                            "de consultar el modelo."
-                        )
-
-                        for resultado in paginas_relevantes:
-                            st.markdown(
-                                f"### Página {resultado['pagina']}"
-                            )
-
-                            st.caption(
-                                f"Puntuación de relevancia: "
-                                f"{resultado['score']:.2f}"
-                            )
-
-                            fragmento = resultado["texto"]
-
-                            if len(fragmento) > 1800:
-                                fragmento = (
-                                    fragmento[:1800]
-                                    + "\n\n[… fragmento recortado …]"
-                                )
-
-                            st.text(fragmento)
-                            st.divider()
-
-                else:
-                    st.info(
-                        "La búsqueda no encontró páginas con "
-                        "coincidencias suficientes."
-                    )
+                st.session_state.resultado_consulta = {
+                    "pregunta": pregunta_limpia,
+                    "respuesta": respuesta,
+                    "ranking": ranking,
+                    "paginas": paginas_relevantes,
+                    "error": None,
+                }
 
             except Exception as error:
-                st.error("No fue posible consultar Gemini.")
-                st.exception(error)
+                st.session_state.resultado_consulta = {
+                    "pregunta": pregunta_limpia,
+                    "respuesta": None,
+                    "ranking": [],
+                    "paginas": [],
+                    "error": str(error),
+                }
+
+resultado_guardado = st.session_state.resultado_consulta
+
+if resultado_guardado is not None:
+    if resultado_guardado["error"]:
+        st.error("No fue posible consultar Gemini.")
+        st.code(resultado_guardado["error"])
+
+    else:
+        st.subheader("Respuesta")
+        st.write(resultado_guardado["respuesta"])
+
+        paginas_relevantes = resultado_guardado["paginas"]
+        ranking = resultado_guardado["ranking"]
+
+        if paginas_relevantes:
+            st.caption("Ranking y motivo de recuperación")
+
+            st.dataframe(
+                ranking,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            with st.expander(
+                "Ver evidencia documental recuperada"
+            ):
+                st.caption(
+                    "Estos fragmentos fueron seleccionados antes "
+                    "de consultar el modelo."
+                )
+
+                for resultado in paginas_relevantes:
+                    st.markdown(
+                        f"### Página {resultado['pagina']}"
+                    )
+
+                    st.caption(
+                        f"Puntuación de relevancia: "
+                        f"{resultado['score']:.2f}"
+                    )
+
+                    fragmento = resultado["texto"]
+
+                    if len(fragmento) > 1800:
+                        fragmento = (
+                            fragmento[:1800]
+                            + "\n\n[… fragmento recortado …]"
+                        )
+
+                    st.text(fragmento)
+                    st.divider()
+
+        else:
+            st.info(
+                "La búsqueda no encontró páginas con "
+                "coincidencias suficientes."
+            )
 
 st.divider()
 
